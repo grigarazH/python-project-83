@@ -1,4 +1,3 @@
-import pytest
 import os
 from page_analyzer import app
 
