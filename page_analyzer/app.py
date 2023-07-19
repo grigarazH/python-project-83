@@ -34,7 +34,11 @@ def index():
 def get_urls():
     messages = get_flashed_messages(with_categories=True)
     with g.conn.cursor(cursor_factory=DictCursor) as cursor:
-        cursor.execute('SELECT urls.id, name, (select created_at AS last_check FROM url_checks WHERE url_id=urls.id ORDER BY created_at DESC LIMIT 1) FROM urls ORDER BY created_at DESC;')
+        cursor.execute(('SELECT urls.id, name, '
+                        '(select created_at AS last_check FROM url_checks'
+                        ' WHERE url_id=urls.id ORDER BY created_at '
+                        'DESC LIMIT 1) FROM urls '
+                        'ORDER BY created_at DESC;'))
         urls = cursor.fetchall()
         return render_template("urls/index.html", urls=urls, messages=messages)
 
@@ -45,9 +49,13 @@ def get_url(id):
     with g.conn.cursor(cursor_factory=DictCursor) as cursor:
         cursor.execute('SELECT * FROM urls WHERE id=%s', (id))
         url = cursor.fetchone()
-        cursor.execute('SELECT * FROM url_checks WHERE url_id=%s ORDER BY created_at DESC', (id))
+        cursor.execute(('SELECT * FROM url_checks '
+                        'WHERE url_id=%s ORDER BY created_at DESC', (id)))
         checks = cursor.fetchall()
-        return render_template("urls/show.html", url=url, checks=checks, messages=messages)
+        return render_template("urls/show.html",
+                               url=url,
+                               checks=checks,
+                               messages=messages)
 
 
 @app.post('/urls')
@@ -80,7 +88,9 @@ def add_url():
 @app.post('/urls/<id>/checks')
 def check_url(id):
     with g.conn.cursor() as cursor:
-        cursor.execute("INSERT INTO url_checks (url_id, created_at) VALUES (%s, %s)", (id, datetime.now()))
+        cursor.execute(("INSERT INTO url_checks "
+                        "(url_id, created_at) VALUES (%s, %s)"),
+                       (id, datetime.now()))
         return redirect(url_for('get_url', id=id))
 
 
