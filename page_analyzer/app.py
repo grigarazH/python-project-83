@@ -34,18 +34,20 @@ def index():
 def get_urls():
     messages = get_flashed_messages(with_categories=True)
     with g.conn.cursor(cursor_factory=DictCursor) as cursor:
-        cursor.execute('SELECT * FROM urls ORDER BY created_at DESC')
+        cursor.execute('SELECT urls.id, name, (select created_at AS last_check FROM url_checks WHERE url_id=urls.id ORDER BY created_at DESC LIMIT 1) FROM urls ORDER BY created_at DESC;')
         urls = cursor.fetchall()
         return render_template("urls/index.html", urls=urls, messages=messages)
 
 
-@app.get('/urls/<id>')
+@app.get('/urls/<id>/')
 def get_url(id):
     messages = get_flashed_messages(with_categories=True)
     with g.conn.cursor(cursor_factory=DictCursor) as cursor:
         cursor.execute('SELECT * FROM urls WHERE id=%s', (id))
         url = cursor.fetchone()
-        return render_template("urls/show.html", url=url, messages=messages)
+        cursor.execute('SELECT * FROM url_checks WHERE url_id=%s ORDER BY created_at DESC', (id))
+        checks = cursor.fetchall()
+        return render_template("urls/show.html", url=url, checks=checks, messages=messages)
 
 
 @app.post('/urls')
@@ -73,6 +75,13 @@ def add_url():
         id = cursor.fetchone()
         g.conn.commit()
     return redirect(url_for('get_url', id=id[0]))
+
+
+@app.post('/urls/<id>/checks')
+def check_url(id):
+    with g.conn.cursor() as cursor:
+        cursor.execute("INSERT INTO url_checks (url_id, created_at) VALUES (%s, %s)", (id, datetime.now()))
+        return redirect(url_for('get_url', id=id))
 
 
 @app.after_request

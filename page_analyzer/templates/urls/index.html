@@ -15,7 +15,7 @@
             <tr>
                 <td>{{ url['id'] }}</td>
                 <td><a href="{{ url_for('get_url', id=url['id']) }}">{{ url['name'] }}</a></td>
-                <td></td>
+                <td>{{ url['last_check'] or ""}}</td>
             </tr>
             {% endfor %}
         </tbody>
