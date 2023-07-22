@@ -8,6 +8,7 @@
                 <th>ID</th>
                 <th>Имя</th>
                 <th>Последняя проверка</th>
+                <th>Код ответа</th>
             </tr>
         </thead>
         <tbody>
@@ -15,7 +16,8 @@
             <tr>
                 <td>{{ url['id'] }}</td>
                 <td><a href="{{ url_for('get_url', id=url['id']) }}">{{ url['name'] }}</a></td>
-                <td>{{ url['last_check'] or ""}}</td>
+                <td>{{ url['last_check'] or "" }}</td>
+                <td>{{ url['status_code'] or "" }}</td>
             </tr>
             {% endfor %}
         </tbody>

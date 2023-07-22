@@ -8,6 +8,7 @@ import validators
 from datetime import datetime
 from psycopg2.errors import UniqueViolation
 from urllib.parse import urlparse
+import requests
 
 load_dotenv()
 
@@ -37,7 +38,11 @@ def get_urls():
         cursor.execute(('SELECT urls.id, name, '
                         '(select created_at AS last_check FROM url_checks'
                         ' WHERE url_id=urls.id ORDER BY created_at '
-                        'DESC LIMIT 1) FROM urls '
+                        'DESC LIMIT 1),'
+                        '(SELECT status_code FROM url_checks'
+                        ' WHERE url_id=urls.id ORDER BY created_at '
+                        'DESC LIMIT 1)'
+                        ' FROM urls '
                         'ORDER BY created_at DESC;'))
         urls = cursor.fetchall()
         return render_template("urls/index.html", urls=urls, messages=messages)
@@ -50,7 +55,7 @@ def get_url(id):
         cursor.execute('SELECT * FROM urls WHERE id=%s', (id))
         url = cursor.fetchone()
         cursor.execute(('SELECT * FROM url_checks '
-                        'WHERE url_id=%s ORDER BY created_at DESC', (id)))
+                        'WHERE url_id=%s ORDER BY created_at DESC'), (id))
         checks = cursor.fetchall()
         return render_template("urls/show.html",
                                url=url,
@@ -87,10 +92,18 @@ def add_url():
 
 @app.post('/urls/<id>/checks')
 def check_url(id):
-    with g.conn.cursor() as cursor:
-        cursor.execute(("INSERT INTO url_checks "
-                        "(url_id, created_at) VALUES (%s, %s)"),
-                       (id, datetime.now()))
+    with g.conn.cursor(cursor_factory=DictCursor) as cursor:
+        cursor.execute("SELECT name FROM urls WHERE id =%s", (id))
+        url = cursor.fetchone()["name"]
+        try:
+            r = requests.get(url)
+            r.raise_for_status()
+            cursor.execute(("INSERT INTO url_checks "
+                            "(url_id, status_code, created_at)"
+                            " VALUES (%s, %s, %s)"),
+                           (id, r.status_code, datetime.now()))
+        except Exception:
+            flash('Произошла ошибка при проверке', 'danger')
         return redirect(url_for('get_url', id=id))
 
 
