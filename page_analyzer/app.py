@@ -9,6 +9,7 @@ from datetime import datetime
 from psycopg2.errors import UniqueViolation
 from urllib.parse import urlparse
 import requests
+from bs4 import BeautifulSoup
 
 load_dotenv()
 
@@ -98,10 +99,15 @@ def check_url(id):
         try:
             r = requests.get(url)
             r.raise_for_status()
+            r_soup = BeautifulSoup(r.text, 'html.parser')
+            h1 = r_soup.h1.string if r_soup.h1 else ""
+            title = r_soup.title.string if r_soup.title else ""
+            meta_desc = r_soup.find("meta", {"name": "description"})
+            description = meta_desc["content"] if meta_desc else ""
             cursor.execute(("INSERT INTO url_checks "
-                            "(url_id, status_code, created_at)"
-                            " VALUES (%s, %s, %s)"),
-                           (id, r.status_code, datetime.now()))
+                            "(url_id, status_code, h1, title, description, created_at)"
+                            " VALUES (%s, %s, %s, %s, %s, %s)"),
+                           (id, r.status_code, h1, title, description, datetime.now()))
         except Exception:
             flash('Произошла ошибка при проверке', 'danger')
         return redirect(url_for('get_url', id=id))
